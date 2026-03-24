@@ -81,7 +81,7 @@ if __name__ == "__main__":
     }
 
     # 4. Start Run
-    with mlflow.start_run():
+    with mlflow.start_run(nested=True):
         start_time = time.time()
 
         # Load & Preprocess
