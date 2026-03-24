@@ -48,7 +48,6 @@ def train_model(pipe, X_train, y_train, param_grid, cv=2):
     Train the model using GridSearchCV.
     """
     print(f"🏋️ Training model with grid: {param_grid}")
-    # verbose=0 to keep logs clean in CI/CD
     model = GridSearchCV(pipe, param_grid, verbose=0, cv=cv, scoring="r2")
     model.fit(X_train, y_train)
     return model
@@ -104,9 +103,13 @@ if __name__ == "__main__":
     
     # Configuration MLflow
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-    mlflow.set_experiment(args.experiment_name)
     
-    print(f"🚀 Starting MLflow Run in experiment: {args.experiment_name}")
+    # Ne pas appeler set_experiment si MLflow Projects a déjà défini l'expérience
+    if not os.environ.get("MLFLOW_EXPERIMENT_ID"):
+        mlflow.set_experiment(args.experiment_name)
+        print(f"🚀 Starting MLflow Run in experiment: {args.experiment_name}")
+    else:
+        print(f"🚀 Using MLflow experiment ID: {os.environ.get('MLFLOW_EXPERIMENT_ID')}")
 
     # 3. Configuration
     DATA_URL = "https://julie-2-next-resources.s3.eu-west-3.amazonaws.com/full-stack-full-time/linear-regression-ft/californian-housing-market-ft/california_housing_market.csv"
@@ -119,7 +122,6 @@ if __name__ == "__main__":
     # 4. Start Run - vérifie si MLFLOW_RUN_ID est défini par MLflow Projects
     if os.environ.get("MLFLOW_RUN_ID"):
         # MLflow Projects a défini un run via variable d'environnement
-        # On log directement sans créer de nouveau run
         print(f"📌 Using existing MLflow run: {os.environ.get('MLFLOW_RUN_ID')}")
         run_training(args, param_grid, DATA_URL)
     else:
