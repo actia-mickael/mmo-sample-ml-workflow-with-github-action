@@ -80,16 +80,19 @@ if __name__ == "__main__":
         "Random_Forest__criterion": [args.criterion]
     }
 
-    # 4. Start Run
-    with mlflow.start_run(nested=True):
+    # 4. Start Run - utilise le run actif si MLflow Projects l'a créé
+    active_run = mlflow.active_run()
+    
+    if active_run:
+        # MLflow Projects a déjà créé un run, on l'utilise directement
         start_time = time.time()
 
         # Load & Preprocess
-        df = load_data(DATA_URL) # Ensure load_data is defined in your script
+        df = load_data(DATA_URL)
         X_train, X_test, y_train, y_test = preprocess_data(df)
 
         # Train
-        pipe = create_pipeline() # Ensure create_pipeline is defined
+        pipe = create_pipeline()
         model = train_model(pipe, X_train, y_train, param_grid)
 
         # Logging
@@ -114,3 +117,35 @@ if __name__ == "__main__":
         )
         
         print("✅ Training Complete.")
+    else:
+        # Pas de run actif, on en crée un
+        with mlflow.start_run():
+            start_time = time.time()
+
+            df = load_data(DATA_URL)
+            X_train, X_test, y_train, y_test = preprocess_data(df)
+
+            pipe = create_pipeline()
+            model = train_model(pipe, X_train, y_train, param_grid)
+
+            best_score = model.best_score_
+            test_score = model.score(X_test, y_test)
+            
+            print(f"📊 Train CV Score: {best_score:.4f}")
+            print(f"📊 Test Score:     {test_score:.4f}")
+
+            mlflow.log_param("n_estimators", args.n_estimators)
+            mlflow.log_param("criterion", args.criterion)
+            
+            mlflow.log_metric("train_cv_score", best_score)
+            mlflow.log_metric("test_score", test_score)
+            mlflow.log_metric("training_time", time.time() - start_time)
+
+            print("💾 Saving model to MLflow...")
+            mlflow.sklearn.log_model(
+                sk_model=model.best_estimator_,
+                artifact_path="model",
+                registered_model_name="random_forest_regressor"
+            )
+            
+            print("✅ Training Complete.")
